@@ -12,8 +12,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define SECOND_RUN
+
 #define MASK	(unsigned char)0xC0
 #define	NUM_CYPHER_TEXT 7
+#define	UNKNOWN_BYTE '?'
 
 typedef enum { IS_LETTER, UNDEFINED } char_type;
 typedef struct {
@@ -25,6 +28,10 @@ typedef struct {
 char str[NUM_CYPHER_TEXT][63];
 char_status status[NUM_CYPHER_TEXT][31];
 
+
+// key found for some columns
+char keys_found[8] = { 0xF2, 0x23, 0x39, 0xCE, 0xE0, 0x2A, 0xEE, 0x30 };
+int cols_found[8]  = { 0, 6, 8, 10, 17, 20, 29, 30 };
 
 void init(void) {
 	strcpy(str[0], "BB3A65F6F0034FA957F6A767699CE7FABA855AFB4F2B520AEAD612944A801E");
@@ -45,7 +52,7 @@ void init(void) {
 		for (j = 0; j < 31; j++) {
 			status[i][j].is_char = 0;
 			status[i][j].can_be_space = 0;
-			status[i][j].guess_byte = '?';
+			status[i][j].guess_byte = UNKNOWN_BYTE;
 		}
 	}
 }
@@ -59,6 +66,20 @@ char_type check_type(unsigned char b1, unsigned char b2) {
 }
 
 
+#ifdef SECOND_RUN
+int check_key(int col, char *k) {
+	int i;
+	for (i = 0; i < 8; i++) {
+		if (col == cols_found[i]) {
+			*k = keys_found[i];
+			return 1;
+		}
+	}
+
+	return 0;
+}
+#endif
+
 int main(void) {
 
 	init();
@@ -66,21 +87,38 @@ int main(void) {
 	int column = 0;
 	int total_iter = 0;
 
-	int start_column = 0; //0;
-	int end_column = 63; //63;
+	int start_column = 0;
+	int end_column = 63;
 	for (column = start_column; column < end_column; column+=2) {
 
 	    int col = column / 2;
 		printf("------------- COLUMN %d ----------\n", col);
+
 		unsigned int i, j;
 		unsigned int b1, b2;
+
+#ifdef SECOND_RUN
+		char key;
+
+		int found = check_key(col, &key);
+		if (found) {
+			for (i = 0; i < NUM_CYPHER_TEXT; i++) {
+				sscanf(&str[i][column], "%02X", &b1);
+				status[i][col].guess_byte = b1 ^ key;
+				status[i][col].is_char = (status[i][col].guess_byte) != ' ';
+				printf ("*********** [%.2s]= [%c]\n", &str[i][column], status[i][col].guess_byte);
+			}
+
+			continue;
+		}
+#endif
+
 		for (i = 0; i < NUM_CYPHER_TEXT; i++) {
 			sscanf(&str[i][column], "%02X", &b1);
 			for (j = 0; j < NUM_CYPHER_TEXT; j++) {
 				 sscanf(&str[j][column], "%02X", &b2);
 				 if (b1 == b2)
 					continue;
-
 
 				 char_type t = check_type((unsigned char)b1, (unsigned char)b2);
 				 if (t == IS_LETTER && !status[i][col].is_char) {
@@ -89,7 +127,7 @@ int main(void) {
 					 status[i][col].can_be_space = 1;
 
 					 char guess_byte = b1 ^ b2 ^ ' ';
-					 if (status[i][col].guess_byte == '?')
+					 if (status[i][col].guess_byte == UNKNOWN_BYTE)
 						 status[i][col].guess_byte = guess_byte;
 				 }
 
@@ -116,14 +154,7 @@ int main(void) {
 	for (i = 0; i < NUM_CYPHER_TEXT; i++) {
 		printf("[");
 		for (j = 0; j < 31; j++) {
-			//printf("%c", status[i][j].guess_byte);
-			//printf("%c", (status[i][j].is_char)? status[i][j].guess_byte: ' ');
-
-			if (status[i][j].guess_byte == '?' && status[i][j].can_be_space) {
-				printf(" ");
-			} else {
-				printf("%c", (status[i][j].is_char)? status[i][j].guess_byte: ' ');
-			}
+			printf("%c", (status[i][j].is_char)? status[i][j].guess_byte: ' ');
 		}
 		printf("]\n");
 	}
