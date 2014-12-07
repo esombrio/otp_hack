@@ -54,7 +54,7 @@ char_type check_type(unsigned char b1, unsigned char b2) {
 	unsigned char mask1 = (b1 & MASK) >> 6;
 	unsigned char mask2 = (b2 & MASK) >> 6;
 	unsigned char xor = mask1 ^ mask2;
-	//printf(">> check_type => %02X ^ %02X = %02X <<", mask1, mask2, xor);
+	printf(">> check_type => %02X ^ %02X = %02X <<", mask1, mask2, xor);
 	return (char_type) ((xor)? UNDEFINED: IS_LETTER);
 }
 
@@ -65,37 +65,47 @@ int main(void) {
 
 	int column = 0;
 	int total_iter = 0;
-	for (column = 0; column < 63; column+=2) {
 
+	int start_column = 0; //0;
+	int end_column = 63; //63;
+	for (column = start_column; column < end_column; column+=2) {
+
+	    int col = column / 2;
+		printf("------------- COLUMN %d ----------\n", col);
 		unsigned int i, j;
 		unsigned int b1, b2;
 		for (i = 0; i < NUM_CYPHER_TEXT; i++) {
 			sscanf(&str[i][column], "%02X", &b1);
-			for (j = i + 1; j < NUM_CYPHER_TEXT; j++) {
+			for (j = 0; j < NUM_CYPHER_TEXT; j++) {
 				 sscanf(&str[j][column], "%02X", &b2);
+				 if (b1 == b2)
+					continue;
+
 
 				 char_type t = check_type((unsigned char)b1, (unsigned char)b2);
-				 int col = column / 2;
-				 if (t == IS_LETTER) {
-					 status[i][col].is_char = status[j][col].is_char = 1;
-				 } else {  // Can be space or char
-					 status[i][col].can_be_space = status[j][col].can_be_space = 1;
+				 if (t == IS_LETTER && !status[i][col].is_char) {
+					 status[i][col].is_char = 1;
+				 } else if (t == UNDEFINED && !status[i][col].can_be_space) {
+					 status[i][col].can_be_space = 1;
 
 					 char guess_byte = b1 ^ b2 ^ ' ';
 					 if (status[i][col].guess_byte == '?')
 						 status[i][col].guess_byte = guess_byte;
-					 if (status[j][col].guess_byte == '?')
-						 status[j][col].guess_byte = guess_byte;
 				 }
 
-				 printf("%02X XOR %02X = (is_char=%d, can_be_space=%d, guess_byte=%c) AND (is_char=%d, can_be_space=%d, guess_byte=%c)\n",
+				 printf("%02X XOR %02X = (is_char=%d, can_be_space=%d, guess_byte=%c)\n",
 						 b1, b2,
-						 status[i][col].is_char, status[i][col].can_be_space, status[i][col].guess_byte,
-						 status[j][col].is_char, status[j][col].can_be_space, status[j][col].guess_byte
+						 status[i][col].is_char, status[i][col].can_be_space, status[i][col].guess_byte
 						 );
+
+				 if (status[i][col].is_char && status[i][col].can_be_space) {
+					 break;
+				 }
 
 				 total_iter++;
 			}
+
+			printf ("*********** [%.2s]= [%c]\n", &str[i][column], status[i][col].guess_byte);
 		}
 	}
 
@@ -107,14 +117,13 @@ int main(void) {
 		printf("[");
 		for (j = 0; j < 31; j++) {
 			//printf("%c", status[i][j].guess_byte);
-			printf("%c", (status[i][j].is_char)? status[i][j].guess_byte: ' ');
+			//printf("%c", (status[i][j].is_char)? status[i][j].guess_byte: ' ');
 
-			/*
-			if (status[i][j].guess_byte == '?') {
+			if (status[i][j].guess_byte == '?' && status[i][j].can_be_space) {
 				printf(" ");
 			} else {
 				printf("%c", (status[i][j].is_char)? status[i][j].guess_byte: ' ');
-			}*/
+			}
 		}
 		printf("]\n");
 	}
