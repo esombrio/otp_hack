@@ -29,9 +29,11 @@ char str[NUM_CYPHER_TEXT][63];
 char_status status[NUM_CYPHER_TEXT][31];
 
 
+#ifdef SECOND_RUN
 // key found for some columns
 char keys_found[8] = { 0xF2, 0x23, 0x39, 0xCE, 0xE0, 0x2A, 0xEE, 0x30 };
 int cols_found[8]  = { 0, 6, 8, 10, 17, 20, 29, 30 };
+#endif
 
 void init(void) {
 	strcpy(str[0], "BB3A65F6F0034FA957F6A767699CE7FABA855AFB4F2B520AEAD612944A801E");
@@ -121,14 +123,11 @@ int main(void) {
 					continue;
 
 				 char_type t = check_type((unsigned char)b1, (unsigned char)b2);
-				 if (t == IS_LETTER && !status[i][col].is_char) {
+				 if (t == IS_LETTER) {
 					 status[i][col].is_char = 1;
-				 } else if (t == UNDEFINED && !status[i][col].can_be_space) {
+				 } else if (t == UNDEFINED) {
 					 status[i][col].can_be_space = 1;
-
-					 char guess_byte = b1 ^ b2 ^ ' ';
-					 if (status[i][col].guess_byte == UNKNOWN_BYTE)
-						 status[i][col].guess_byte = guess_byte;
+					 status[i][col].guess_byte = b1 ^ b2 ^ ' ';
 				 }
 
 				 printf("%02X XOR %02X = (is_char=%d, can_be_space=%d, guess_byte=%c)\n",
@@ -136,11 +135,11 @@ int main(void) {
 						 status[i][col].is_char, status[i][col].can_be_space, status[i][col].guess_byte
 						 );
 
+				 total_iter++;
+
 				 if (status[i][col].is_char && status[i][col].can_be_space) {
 					 break;
 				 }
-
-				 total_iter++;
 			}
 
 			printf ("*********** [%.2s]= [%c]\n", &str[i][column], status[i][col].guess_byte);
